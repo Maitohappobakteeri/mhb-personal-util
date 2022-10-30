@@ -1,3 +1,4 @@
+use clap::{arg, command, Command};
 use cursive::{
     event,
     theme::{BaseColor, Color, ColorType, Style},
@@ -5,8 +6,9 @@ use cursive::{
     views::{LinearLayout, TextView},
     Cursive,
 };
+use serde::Deserialize;
 
-use std::io::BufReader;
+use std::{fs::File, io::BufReader};
 use std::{thread, time::Duration};
 
 struct State {
@@ -19,7 +21,37 @@ const INITIAL_STATE: State = State {
     list_size: 2,
 };
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct MHBUtilCommand {
+    name: String,
+    description: String,
+}
+
 fn main() {
+    let f = File::open("../../test-config.json")?;
+    let mut reader = BufReader::new(f);
+    let mhb_util = serde_json::from_reader(reader)?;
+
+    let matches = command!() // requires `cargo` feature
+        .propagate_version(true)
+        .subcommand_required(true)
+        .arg_required_else_help(true)
+        .subcommand(
+            Command::new("add")
+                .about("Adds files to myapp")
+                .arg(arg!([NAME])),
+        )
+        .get_matches();
+
+    match matches.subcommand() {
+        Some(("add", sub_matches)) => println!(
+            "'myapp add' was used, name is: {:?}",
+            sub_matches.get_one::<String>("NAME")
+        ),
+        _ => unreachable!("Exhausted list of subcommands and subcommand_required prevents `None`"),
+    }
+
     let mut theme = cursive::theme::load_default();
 
     theme.palette[cursive::theme::PaletteColor::Background] =
@@ -37,11 +69,11 @@ fn main() {
 
     let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
     let play_sound = move || {
-        let file = std::fs::File::open("./woomy.mp3").unwrap();
-        let beep1 = stream_handle.play_once(BufReader::new(file)).unwrap();
-        beep1.set_volume(1.0);
-        thread::sleep(Duration::from_millis(200));
-        beep1.detach();
+        // let file = std::fs::File::open("./woomy.mp3").unwrap();
+        // let beep1 = stream_handle.play_once(BufReader::new(file)).unwrap();
+        // beep1.set_volume(1.0);
+        // thread::sleep(Duration::from_millis(200));
+        // beep1.detach();
     };
 
     let select_prev = |c: &mut Cursive| {
@@ -111,4 +143,6 @@ fn main() {
     siv.add_global_callback(event::Key::Enter, move |s| play_sound());
 
     siv.run();
+
+    Ok()
 }
