@@ -1,5 +1,0 @@
-{ "commands": [{
-    "name": "Debug echo",
-    "description": "Just to check this utility works!",
-    "commandToExecute": "echo.bash"
-}]}

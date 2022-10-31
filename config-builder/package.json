@@ -1,0 +1,16 @@
+{
+  "name": "config-builder",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build-config": "ts-node main.ts > ../build/config.json"
+  },
+  "author": "",
+  "license": "",
+  "dependencies": {
+    "@types/fs-extra": "^9.0.13",
+    "fs-extra": "^10.1.0",
+    "ts-node": "^10.9.1"
+  }
+}

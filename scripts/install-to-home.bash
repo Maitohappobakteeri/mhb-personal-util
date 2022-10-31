@@ -15,12 +15,19 @@ function profile_filename() {
     cargo build --release
 )
 
+mkdir -p build/
+(
+    cd config-builder/
+    npm install
+    npm run build-config > ../build/config.json
+)
+
 # Delete and remake install directory
 rm -Rf ~/.mhb-util
 mkdir ~/.mhb-util
 mkdir ~/.mhb-util/apps
-cp manager-app/target/release/manager-app ~/.mhb-util
-cp config.json ~/.mhb-util
+cp manager-app/target/release/manager-app ~/.mhb-util/mhb-util
+cp build/config.json ~/.mhb-util
 cp manager-app/test/echo.bash ~/.mhb-util
 
 # Add path
