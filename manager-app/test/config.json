@@ -1,0 +1,18 @@
+{ "commands": [{
+    "name": "Komento",
+    "description": "Tää tekee jotain",
+    "subCommands": [{
+        "name": "Vaan yks",
+        "description": "-"
+    }]
+}, {
+    "name": "Config",
+    "description": "Tuo konffifilu",
+    "subCommands": [{
+        "name": "Rust",
+        "description": "-"
+    }, {
+        "name": "TypeScript",
+        "description": "-"
+    }]
+}]}
