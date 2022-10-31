@@ -10,6 +10,7 @@ use serde::Deserialize;
 use std::{
     env::{self, args},
     error::Error,
+    fmt::format,
     fs::File,
     io::BufReader,
 };
@@ -306,7 +307,7 @@ fn run_command(command: &str) -> Result<(), Box<dyn Error>> {
 
     if dir.exists() {
         std::process::Command::new("bash")
-            .arg(dir.to_str().unwrap())
+            .arg(format!("~/.mhb-util/{}", command))
             .status()?;
         return Ok(());
     } else {
