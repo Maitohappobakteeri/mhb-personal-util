@@ -1,4 +1,4 @@
-use clap::{arg, command, Command};
+use clap::{arg, command, ArgMatches, Command};
 use cursive::{
     event,
     theme::{BaseColor, BorderStyle, Color, ColorType, Effect, Style, Theme},
@@ -7,19 +7,26 @@ use cursive::{
     Cursive,
 };
 use serde::Deserialize;
-use std::{env, error::Error, fs::File, io::BufReader};
+use std::{
+    env::{self, args},
+    error::Error,
+    fs::File,
+    io::BufReader,
+};
 
 #[derive(Clone)]
 struct State {
     list_index: i64,
     list_size: i64,
     path: Vec<MHBUtilCommand>,
+    command: Option<String>,
 }
 
 const INITIAL_STATE: State = State {
     list_index: 0,
     list_size: 2,
     path: vec![],
+    command: None,
 };
 
 #[derive(Debug, Deserialize, Clone)]
@@ -27,6 +34,8 @@ const INITIAL_STATE: State = State {
 struct MHBUtilCommand {
     name: String,
     description: String,
+
+    command_to_execute: Option<String>,
     sub_commands: Option<Vec<MHBUtilCommand>>,
 }
 
@@ -56,6 +65,26 @@ fn load_config() -> Result<&'static MHBUtilConfig, Box<dyn Error>> {
     Ok(Box::leak(Box::new(mhb_util)))
 }
 
+fn build_subcommand_args(command: &'static MHBUtilCommand) -> Command {
+    let mut args_config = Command::new(command.name.as_str()).about(&command.description);
+
+    if (command.sub_commands.is_some()) {
+        args_config = args_config.subcommand_required(true);
+    }
+
+    match &command.sub_commands {
+        Some(sub_coms) => {
+            for sub_com in sub_coms {
+                let sc = build_subcommand_args(sub_com);
+                args_config = args_config.subcommand(sc);
+            }
+        }
+        _ => (),
+    }
+
+    args_config
+}
+
 fn build_args(config: &'static MHBUtilConfig) -> Command {
     let mut args_config = command!()
         .about("MHB Utilities")
@@ -64,11 +93,7 @@ fn build_args(config: &'static MHBUtilConfig) -> Command {
         .subcommand_required(false);
 
     for command in &config.commands {
-        args_config = args_config.subcommand(
-            Command::new(command.name.as_str())
-                .about(&command.description)
-                .arg(arg!([NAME])),
-        );
+        args_config = args_config.subcommand(build_subcommand_args(command));
     }
 
     args_config
@@ -244,15 +269,59 @@ fn get_header_theme() -> Theme {
     theme
 }
 
+fn get_subcommand<'a>(
+    command: &'a MHBUtilCommand,
+    matches: &ArgMatches,
+) -> Option<&'a MHBUtilCommand> {
+    match matches.subcommand() {
+        Some((c, sub_matches)) => {
+            let l = command.sub_commands.as_ref();
+            match l {
+                Some(subs) => {
+                    let m = subs.iter().find(|x| x.name == c).unwrap();
+                    get_subcommand(m, sub_matches)
+                }
+                _ => None,
+            }
+        }
+        _ => Some(command),
+    }
+}
+
+fn get_command(config: &MHBUtilConfig, matches: ArgMatches) -> Option<&MHBUtilCommand> {
+    match matches.subcommand() {
+        Some((command, sub_matches)) => {
+            let m = config.commands.iter().find(|x| x.name == command).unwrap();
+            get_subcommand(m, &sub_matches)
+        }
+        _ => None,
+    }
+}
+
+fn run_command(command: &str) -> Result<(), Box<dyn Error>> {
+    let s = String::from(command);
+    let mut dir = env::current_exe()?;
+    dir.pop();
+    dir.push(s);
+
+    if dir.exists() {
+        std::process::Command::new("bash")
+            .arg(dir.to_str().unwrap())
+            .status()?;
+        return Ok(());
+    } else {
+        std::process::Command::new("bash").arg(command).status()?;
+        return Ok(());
+    }
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let config = load_config()?;
     let matches = build_args(config).get_matches();
 
-    match matches.subcommand() {
-        Some(("add", sub_matches)) => println!(
-            "'myapp add' was used, name is: {:?}",
-            sub_matches.get_one::<String>("NAME")
-        ),
+    let command = get_command(config, matches);
+    match command {
+        Some(c) => return run_command(&c.command_to_execute.clone().unwrap()),
         _ => println!("No command. Running in interactive mode."),
     }
 
@@ -292,6 +361,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             list_index: i,
             list_size: size,
             path,
+            command: None,
         });
 
         update_colors(c);
@@ -309,6 +379,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             list_index: i,
             list_size: size,
             path,
+            command: None,
         });
 
         update_colors(c);
@@ -321,21 +392,53 @@ fn main() -> Result<(), Box<dyn Error>> {
             .unwrap_or(INITIAL_STATE);
         let i = state.list_index;
         let mut path = state.path.to_owned();
-        let selected = path
-            .last()
-            .map(|x| x.sub_commands.as_ref().unwrap().clone())
-            .unwrap_or(config.commands.clone())
-            .clone()[i as usize]
-            .clone();
-        let size = selected.sub_commands.clone().map(|x| x.len()).unwrap_or(0) as i64;
-        path.push(selected);
-        c.set_user_data(State {
-            list_index: i,
-            list_size: size,
-            path,
-        });
 
-        update_header(config.clone(), c);
+        let command_list = path
+            .last()
+            .map(|x| x.sub_commands.as_ref())
+            .flatten()
+            .unwrap_or(&config.commands);
+
+        let selected = command_list.get(i as usize);
+        let can_select = if path.last().is_some() {
+            path.last().unwrap().sub_commands.is_some()
+                && selected
+                    .map(|x| x.sub_commands.as_ref())
+                    .flatten()
+                    .is_some()
+        } else {
+            true
+        };
+
+        if can_select {
+            let size = command_list.clone().len() as i64;
+            path.push(selected.unwrap().clone());
+            c.set_user_data(State {
+                list_index: i,
+                list_size: size,
+                path,
+                command: None,
+            });
+
+            update_header(config.clone(), c);
+        } else {
+            if selected.is_some() && selected.unwrap().command_to_execute.is_some() {
+                c.quit();
+                c.set_user_data(State {
+                    list_index: i,
+                    list_size: 0,
+                    path: vec![],
+                    command: Some(
+                        selected
+                            .unwrap()
+                            .command_to_execute
+                            .as_ref()
+                            .unwrap()
+                            .to_string(),
+                    ),
+                });
+            }
+        }
     };
 
     let previous_command = |c: &mut Cursive| {
@@ -355,6 +458,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             list_index: i,
             list_size: size,
             path,
+            command: None,
         });
 
         update_header(config.clone(), c);
@@ -367,6 +471,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     update_colors(&mut siv);
     siv.run();
+    let state: State = siv
+        .user_data::<State>()
+        .map(|s| s.clone())
+        .unwrap_or(INITIAL_STATE);
+
+    if state.command.is_some() {
+        run_command(&state.command.unwrap())?;
+    }
 
     Ok(())
 }

@@ -2,7 +2,8 @@
     "name": "Komento",
     "description": "Tää tekee jotain",
     "subCommands": [{
-        "name": "Vaan yks",
+        "commandToExecute": "test/echo.bash",
+        "name": "only",
         "description": "-"
     }]
 }, {
