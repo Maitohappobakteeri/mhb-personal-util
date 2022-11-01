@@ -411,7 +411,25 @@ fn main() -> Result<(), Box<dyn Error>> {
             true
         };
 
-        if can_select {
+        if selected.is_some()
+            && selected.unwrap().command_to_execute.is_some()
+            && selected.unwrap().sub_commands.is_none()
+        {
+            c.quit();
+            c.set_user_data(State {
+                list_index: i,
+                list_size: 0,
+                path: vec![],
+                command: Some(
+                    selected
+                        .unwrap()
+                        .command_to_execute
+                        .as_ref()
+                        .unwrap()
+                        .to_string(),
+                ),
+            });
+        } else if can_select {
             let size = command_list.clone().len() as i64;
             path.push(selected.unwrap().clone());
             c.set_user_data(State {
@@ -422,23 +440,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             });
 
             update_header(config.clone(), c);
-        } else {
-            if selected.is_some() && selected.unwrap().command_to_execute.is_some() {
-                c.quit();
-                c.set_user_data(State {
-                    list_index: i,
-                    list_size: 0,
-                    path: vec![],
-                    command: Some(
-                        selected
-                            .unwrap()
-                            .command_to_execute
-                            .as_ref()
-                            .unwrap()
-                            .to_string(),
-                    ),
-                });
-            }
         }
     };
 
