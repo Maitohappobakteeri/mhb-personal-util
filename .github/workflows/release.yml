@@ -56,7 +56,6 @@ jobs:
         - uses: actions-rs/toolchain@v1
           with:
             toolchain: stable
-            target: x86_64-pc-windows-gnu
         - uses: actions/cache@v3
           with:
             path: |
@@ -69,7 +68,7 @@ jobs:
         - uses: actions/setup-node@v3
           with:
             node-version: 16
-        - run: sudo apt-get install -y gcc-mingw-w64
+        - run: sudo apt-get install -y gcc-mingw-w64 libasound2-dev
         - run: ./scripts/create-release-default.bash
         - uses: actions/upload-artifact@v3
           with:
