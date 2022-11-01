@@ -34,4 +34,5 @@ cp manager-app/test/echo.bash build/release
 cp scripts/install-to-home.bash build/release
 
 # Compress release
+rm -f build/mhb-release-cygwin.zip
 7z a build/mhb-release-cygwin.zip ./build/release/*
