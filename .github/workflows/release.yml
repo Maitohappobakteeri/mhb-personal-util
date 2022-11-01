@@ -1,0 +1,25 @@
+name: 'Release'
+
+on:
+  workflow_dispatch:
+  
+permissions:
+  contents: read
+  
+concurrency:
+  group: '${{ github.workflow }}'
+  cancel-in-progress: true
+
+jobs: 
+  build_and_package:
+      name: Build and package
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v2
+        - uses: actions-rs/toolchain@v1
+          with:
+            toolchain: stable
+        - uses: actions/setup-node@v3
+          with:
+            node-version: 16
+        - run: ./scripts/create-release-cygwin.bash
