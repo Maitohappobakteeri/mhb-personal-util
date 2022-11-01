@@ -19,7 +19,12 @@ jobs:
         - uses: actions-rs/toolchain@v1
           with:
             toolchain: stable
+            target: x86_64-pc-windows-gnu
         - uses: actions/setup-node@v3
           with:
             node-version: 16
         - run: ./scripts/create-release-cygwin.bash
+        - uses: actions/upload-artifact@v3
+          with:
+            name: release-cygwin
+            path: build/mhb-release-cygwin.zip
