@@ -11,15 +11,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs: 
-  build_and_package:
-      name: Build and package
+  build_and_package_cygwin:
+      name: Build and package for Cygwin environment
       runs-on: ubuntu-latest
+      
       steps:
+        - uses: actions/cache@v3
+          with:
+            path: |
+              ~/.cargo/bin/
+              ~/.cargo/registry/index/
+              ~/.cargo/registry/cache/
+              ~/.cargo/git/db/
+              target/
+            key: cygwin-${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         - uses: actions/checkout@v2
         - uses: actions-rs/toolchain@v1
           with:
             toolchain: stable
             target: x86_64-pc-windows-gnu
+        - uses: actions/cache@v3
+          with:
+            path: |
+              ~/.cargo/bin/
+              ~/.cargo/registry/index/
+              ~/.cargo/registry/cache/
+              ~/.cargo/git/db/
+              target/
+            key: cygwin-${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         - uses: actions/setup-node@v3
           with:
             node-version: 16
@@ -27,5 +46,32 @@ jobs:
         - run: ./scripts/create-release-cygwin.bash
         - uses: actions/upload-artifact@v3
           with:
-            name: release-cygwin
+            name: mhb-release-cygwin
             path: build/mhb-release-cygwin.zip
+  build_and_package:
+      name: Build and package for default linux environment
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v2
+        - uses: actions-rs/toolchain@v1
+          with:
+            toolchain: stable
+            target: x86_64-pc-windows-gnu
+        - uses: actions/cache@v3
+          with:
+            path: |
+              ~/.cargo/bin/
+              ~/.cargo/registry/index/
+              ~/.cargo/registry/cache/
+              ~/.cargo/git/db/
+              target/
+            key: cygwin-${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        - uses: actions/setup-node@v3
+          with:
+            node-version: 16
+        - run: sudo apt-get install -y gcc-mingw-w64
+        - run: ./scripts/create-release-default.bash
+        - uses: actions/upload-artifact@v3
+          with:
+            name: mhb-release-default
+            path: build/mhb-release.zip
